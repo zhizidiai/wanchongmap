@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>信宜市丁堡镇湾冲村系列数字村史地图之大塘坡村篇</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            background-color: #f6fdf6;
+            color: #4a4a4a;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* 🌸 开屏页 */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #a8e6cf 0%, #dbede6 50%, #ffd3b6 100%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.6s ease, visibility 0.6s ease;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loading-card {
+            background: rgba(255, 255, 255, 0.92);
+            padding: 30px 40px;
+            border-radius: 28px;
+            box-shadow: 0 12px 32px rgba(46, 125, 50, 0.15);
+            text-align: center;
+            max-width: 90vw;
+            width: 380px;
+            border: 3px solid #fff;
+            animation: bounceIn 0.8s ease;
+        }
+
+        .loading-ip-avatar {
+            width: 100px;
+            height: 100px;
+            background: #ffffff;
+            border-radius: 50%;
+            margin: 0 auto 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 6px 16px rgba(255, 139, 148, 0.3);
+            animation: float 2.5s ease-in-out infinite;
+            overflow: hidden;
+            border: 3px solid #ff8b94;
+        }
+
+        .loading-ip-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .loading-title {
+            font-size: 22px;
+            color: #2e7d32;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .loading-subtitle {
+            font-size: 14px;
+            color: #757575;
+            margin-bottom: 24px;
+        }
+
+        .start-btn {
+            background: linear-gradient(45deg, #4caf50, #81c784);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 16px rgba(76, 175, 80, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .start-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 20px rgba(76, 175, 80, 0.4);
+        }
+
+        /* 🗺️ 地图画布容器 */
+        #map-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+            cursor: grab;
+            background-color: #e8f5e9;
+        }
+
+        #map-container:active {
+            cursor: grabbing;
+        }
+
+        #map-wrapper {
+            position: absolute;
+            transform-origin: 0 0;
+            will-change: transform;
+        }
+
+        #map-image {
+            display: block;
+            max-width: none;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        /* 🌸 全屏花瓣飘落容器 */
+        .petal-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 15;
+            overflow: hidden;
+        }
+
+        .petal {
+            position: absolute;
+            background: linear-gradient(135deg, #ffb7b2 0%, #ff8b94 100%);
+            border-radius: 15px 0 15px 0;
+            opacity: 0.8;
+            pointer-events: none;
+            animation: petalFall linear infinite;
+        }
+
+        /* 💧 点击波纹动画 */
+        .click-ripple {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: rgba(129, 199, 132, 0.4);
+            border: 2px solid #4caf50;
+            border-radius: 50%;
+            transform: translate(-50%, -50%) scale(0.2);
+            pointer-events: none;
+            z-index: 40;
+            animation: rippleEffect 0.7s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+        }
+
+        /* 📍 标注点样式 */
+        .spot-marker {
+            position: absolute;
+            transform: translate(-50%, -100%);
+            cursor: pointer;
+            z-index: 20;
+            transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .spot-marker:hover {
+            transform: translate(-50%, -115%) scale(1.2);
+            z-index: 30;
+        }
+
+        .marker-icon {
+            font-size: 32px;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.15));
+            text-align: center;
+            animation: miniBounce 2s infinite ease-in-out;
+            position: relative;
+        }
+
+        /* 景点光晕特效 */
+        .marker-icon::after {
+            content: '';
+            position: absolute;
+            bottom: 2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 8px;
+            background: rgba(46, 125, 50, 0.25);
+            border-radius: 50%;
+            filter: blur(2px);
+            z-index: -1;
+            animation: shadowPulse 2s infinite ease-in-out;
+        }
+
+        .marker-title {
+            background: #ffffff;
+            color: #2e7d32;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 13px;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.18);
+            border: 2px solid #81c784;
+            text-align: center;
+            margin-top: -2px;
+        }
+
+        /* 🚶‍♀️ 地图内部自由行走的“湾小荔”角色 */
+        #ip-walker {
+            position: absolute;
+            z-index: 50;
+            transform: translate(-50%, -80%);
+            pointer-events: none;
+            transition: left 0.8s cubic-bezier(0.25, 1, 0.5, 1), top 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .walker-avatar {
+            width: 64px;
+            height: 64px;
+            background: #ffffff;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+            border: 3px solid #ff8b94;
+            overflow: hidden;
+            animation: walkerBounce 0.6s infinite alternate ease-in-out;
+        }
+
+        .walker-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .walker-bubble {
+            background: #ffffff;
+            border: 2px solid #ff8b94;
+            padding: 6px 12px;
+            border-radius: 14px;
+            font-size: 12px;
+            color: #333;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            margin-bottom: 6px;
+            position: relative;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .walker-bubble::after {
+            content: '';
+            position: absolute;
+            bottom: -6px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-width: 6px 6px 0;
+            border-style: solid;
+            border-color: #ff8b94 transparent;
+            display: block;
+            width: 0;
+        }
+
+        /* 🎛️ 右下角控制按键 */
+        .controls {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            width: 46px;
+            height: 46px;
+            background: white;
+            border: 2px solid #a8e6cf;
+            color: #2e7d32;
+            border-radius: 50%;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: #e8f5e9;
+            transform: scale(1.1);
+        }
+
+        /* 💡 操作提示小浮条 */
+        .walk-tips {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1.5px solid #a8e6cf;
+            color: #2e7d32;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        /* 📋 侧边栏 */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            right: -450px;
+            width: 400px;
+            max-width: 90vw;
+            height: 100vh;
+            background: #ffffff;
+            box-shadow: -6px 0 24px rgba(0,0,0,0.08);
+            z-index: 200;
+            transition: right 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+            display: flex;
+            flex-direction: column;
+            border-top-left-radius: 24px;
+            border-bottom-left-radius: 24px;
+            overflow: hidden;
+        }
+
+        .sidebar.open {
+            right: 0;
+        }
+
+        .sidebar-header {
+            padding: 20px 24px;
+            background: linear-gradient(135deg, #a8e6cf, #81c784);
+            color: #1b5e20;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .close-btn {
+            background: rgba(255,255,255,0.4);
+            border: none;
+            color: #1b5e20;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .close-btn:hover {
+            background: rgba(255,255,255,0.8);
+        }
+
+        .sidebar-body {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .audio-section {
+            background: #f1f8e9;
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+            border: 1px solid #c8e6c9;
+        }
+
+        .audio-section h4 {
+            margin-bottom: 12px;
+            color: #2e7d32;
+            font-size: 14px;
+        }
+
+        .audio-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .audio-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #81c784;
+            background: white;
+            color: #2e7d32;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .audio-btn.playing {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+            box-shadow: 0 4px 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .gallery-section {
+            margin-bottom: 20px;
+        }
+
+        .gallery-main {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 16px;
+            margin-bottom: 10px;
+            background: #f5f5f5;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+        }
+
+        .gallery-thumbs {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 6px;
+        }
+
+        .thumb-img {
+            width: 58px;
+            height: 58px;
+            object-fit: cover;
+            border-radius: 10px;
+            cursor: pointer;
+            opacity: 0.6;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .thumb-img.active, .thumb-img:hover {
+            opacity: 1;
+            border: 2px solid #4caf50;
+            transform: scale(1.05);
+        }
+
+        .info-section h3 {
+            font-size: 15px;
+            color: #2e7d32;
+            margin-top: 14px;
+            margin-bottom: 6px;
+        }
+
+        .info-section p {
+            font-size: 13px;
+            line-height: 1.6;
+            color: #555;
+            background: #fafafa;
+            padding: 10px 12px;
+            border-radius: 10px;
+        }
+
+        /* 🎬 动态动画定义 */
+        @keyframes petalFall {
+            0% {
+                top: -10%;
+                transform: translateX(0) rotate(0deg);
+            }
+            100% {
+                top: 105%;
+                transform: translateX(100px) rotate(360deg);
+            }
+        }
+
+        @keyframes rippleEffect {
+            0% { opacity: 0.9; transform: translate(-50%, -50%) scale(0.2); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(4); }
+        }
+
+        @keyframes shadowPulse {
+            0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.3; }
+            50% { transform: translateX(-50%) scaleX(1.4); opacity: 0.15; }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes walkerBounce {
+            from { transform: translateY(0px); }
+            to { transform: translateY(-6px); }
+        }
+
+        @keyframes miniBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.7); opacity: 0; }
+            80% { transform: scale(1.05); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 🌸 开屏页 -->
+    <div id="loading-screen">
+        <div class="loading-card">
+            <div class="loading-ip-avatar">
+                <img src="湾小荔.png" alt="湾小荔" onerror="this.outerHTML='🍈'">
+            </div>
+            <div class="loading-title">湾冲大塘坡村 村史数字地图</div>
+            <div class="loading-subtitle">点击地图任意位置，湾小荔就会走过去哦！</div>
+            <button class="start-btn" onclick="enterMap()">进入地图 🚀</button>
+        </div>
+    </div>
+
+    <!-- 💡 操作提示 -->
+    <div class="walk-tips">
+        🍈 点击地图任意位置，湾小荔就会走到哪里；点击景点可直接查看讲解！
+    </div>
+
+    <!-- 🌸 花瓣飘落效果容器 -->
+    <div class="petal-container" id="petal-container"></div>
+
+    <!-- 🗺️ 地图容器 -->
+    <div id="map-container">
+        <div id="map-wrapper">
+            <img id="map-image" src="map2.png" alt="湾冲村手绘地图">
+
+            <div id="markers-layer"></div>
+            
+            <!-- 🚶‍♀️ 在地图里面游动的湾小荔 -->
+            <div id="ip-walker">
+                <div class="walker-bubble" id="walker-bubble">点击地图，我就会走过去哦！</div>
+                <div class="walker-avatar">
+                    <img src="湾小荔.png" alt="湾小荔" onerror="this.outerHTML='🍈'">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 🎛️ 缩放按钮 -->
+    <div class="controls">
+        <button class="control-btn" onclick="zoomIn()">＋</button>
+        <button class="control-btn" onclick="zoomOut()">－</button>
+        <button class="control-btn" onclick="resetZoom()">↺</button>
+    </div>
+
+    <!-- 📋 景点侧边栏 -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h2 id="spot-title">景点名称</h2>
+            <button class="close-btn" onclick="closeSidebar()">✕</button>
+        </div>
+        <div class="sidebar-body">
+            <!-- 语音导览 -->
+            <div class="audio-section">
+                <h4>🎙️ 语音讲解</h4>
+                <div class="audio-buttons">
+                    <button id="btn-mandarin" class="audio-btn" onclick="playVoice('mandarin')">
+                        <span>📢 普通话</span>
+                    </button>
+                    <button id="btn-cantonese" class="audio-btn" onclick="playVoice('cantonese')">
+                        <span>📻 粤语</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 图片展示 -->
+            <div class="gallery-section">
+                <img id="main-image" class="gallery-main" src="" alt="景点图片">
+                <div id="thumb-container" class="gallery-thumbs"></div>
+            </div>
+
+            <!-- 文字简介 -->
+            <div class="info-section">
+                <h3>📌 概述</h3>
+                <p id="spot-summary"></p>
+                <h3>📖 详细介绍</h3>
+                <p id="spot-detail"></p>
+            </div>
+        </div>
+    </div>
+
+    <audio id="global-audio"></audio>
+
+    <script>
+        // 📍 景点数据
+        const spots = [
+            { 
+                id: 1, 
+                name: "丁堡大塘坡古荔枝公园", 
+                x: 477, y: 447, 
+                audioMandarin: "大塘坡古荔枝公园（国语）.mp3",
+                audioCantonese: "大塘坡古荔枝公园（粤语）.mp3",
+                summary: "百年古荔成林、珍稀母树传香，大塘坡古荔枝公园以267棵苍劲古树见证着荔乡绵延数百年的种植历史与文化传承。", 
+                detail: "大塘坡古荔枝公园内保存有267棵树龄百年以上的古荔枝树，以“进奉”品种为主，兼有三月红、桂味等常见荔枝品种，树龄大多在200至300年之间。园内尤为珍贵的是“扔死狗”（晚香玉）荔枝母树，枝干苍劲、树冠繁茂，属国家三级保护古树，是当地悠久荔枝种植历史与古树文化传承的重要见证。",
+                images: ["1.0封面.png"],
+                icon: "🌳" 
+            },
+            { 
+                id: 2, 
+                name: "大塘坡桥", 
+                x: 263, y: 721, 
+                audioMandarin: "大塘坡桥（国语）.mp3",
+                audioCantonese: "大塘坡桥（粤语）.mp3",
+                summary: "连接村内外的重要便民桥梁，承载着几代湾冲村人的生活记忆。", 
+                detail: "大塘坡桥始建于1988年，桥长20米、宽3米、高6米，是大塘坡村重要的交通设施之一。该桥便利了村民日常出行和物资运输，改善了村庄通行条件，在连接村内外交通、服务生产生活等方面发挥了积极作用。",
+                images: ["大塘坡桥封面.png"],
+                icon: "🌉" 
+            },
+            { 
+                id: 3, 
+                name: "一河两岸", 
+                x: 574, y: 812, 
+                audioMandarin: "一河两岸（国语）.mp3",
+                audioCantonese: "一河两岸（粤语）.mp3",
+                summary: "小水河“一河两岸”景观带串联河流生态、古荔资源与休闲空间，成为集生态治理、便民休闲、文化展示和乡村旅游于一体的滨水风景线。", 
+                detail: "湾冲村“一河两岸”景观带依托小水河及沿岸生态资源建设，以河道整治和环境提升为基础，完善鱼鳞坝、滨水绿道、休闲步道、观光凉亭、亲水栈道、景观照明及村庄标识等设施，逐步形成水清岸绿、河道畅通、景观协调的滨水公共空间。沿线花草相映、河岸开阔，既为周边居民提供散步、跑步和休闲观光的场所，也成为游客途经湾冲时驻足游览、拍照打卡的乡村景观节点。",
+                images: ["一河两岸封面.jpg"],
+                icon: "🌊" 
+            },
+            { 
+                id: 4, 
+                name: "锦耀书院", 
+                x: 1020, y: 503, 
+                audioMandarin: "锦耀书院（国语）.mp3",
+                audioCantonese: "锦耀书院（粤语）.mp3",
+                summary: "锦耀书院历经兴建、损毁与重建，在岁月更迭中几经沉浮，见证了乡村礼俗变迁，也延续着一方绵长的历史记忆与文化根脉。", 
+                detail: "锦耀书院始建于民国三十年前，上下两座两廊，上座三厅供奉金炉香火，每年清明为祭祀之期。后历经岁月沧桑与结构损毁，分别于2007年与2014年经乡贤筹资重建，重焕光彩。",
+                images: ["锦耀书院封面.png"],
+                icon: "🏛️" 
+            },
+            { 
+                id: 5, 
+                name: "黄兆其家", 
+                x: 1530, y: 482, 
+                audioMandarin: "黄兆其家（国语）.mp3",
+                audioCantonese: "黄兆其家（粤语）.mp3",
+                summary: "一轮手摇，留住的不只是竹片加工的旧时技艺，更是黄兆其一家珍藏至今的勤劳记忆与乡土岁月。", 
+                detail: "这台由黄兆其家中珍藏的传统手摇竹片加工机，是一件承载着乡村生产记忆的“老宝物”。过去，村民通过转动手轮带动齿轮和刀具运转，将竹材加工成厚薄均匀的竹片；如今，竹片加工多由电动机驱动，生产效率显著提高。这台旧机器留存着一家人勤劳持家的生活记忆。",
+                images: ["竹片加工的传统手动设备（封面）.png"],
+                icon: "🏡" 
+            }
+        ];
+
+        // 全局地图与角色状态
+        let scale = 1;
+        let pointX = 0;
+        let pointY = 0;
+        let activeSpotObj = null;
+        let currentLang = null;
+
+        // 湾小荔坐标
+        let walkerX = 477;
+        let walkerY = 447;
+
+        const container = document.getElementById('map-container');
+        const wrapper = document.getElementById('map-wrapper');
+        const markersLayer = document.getElementById('markers-layer');
+        const ipWalker = document.getElementById('ip-walker');
+        const walkerBubble = document.getElementById('walker-bubble');
+        const audio = document.getElementById('global-audio');
+
+        window.onload = () => {
+            initMarkers();
+            setupMapControls();
+            setupClickToWalk();
+            createPetals(); // 生成花瓣动画
+            
+            audio.onended = () => resetAudioButtons();
+            audio.onerror = () => resetAudioButtons();
+        };
+
+        function enterMap() {
+            document.getElementById('loading-screen').classList.add('hidden');
+            // 初始让湾小荔定位在第一个景点
+            moveWalkerTo(spots[0].x, spots[0].y, "我们到大塘坡古荔枝公园啦！");
+        }
+
+        /* 🌸 动态生成落花效果 */
+        function createPetals() {
+            const petalContainer = document.getElementById('petal-container');
+            const petalCount = 20; // 页面同时存在的花瓣数量
+
+            for (let i = 0; i < petalCount; i++) {
+                const petal = document.createElement('div');
+                petal.className = 'petal';
+                
+                // 随机大小、位置、降落速度与延时
+                const size = Math.random() * 8 + 10; // 10px - 18px
+                const left = Math.random() * 100; // 0% - 100%
+                const duration = Math.random() * 5 + 6; // 6s - 11s
+                const delay = Math.random() * 5;
+
+                petal.style.width = `${size}px`;
+                petal.style.height = `${size}px`;
+                petal.style.left = `${left}vw`;
+                petal.style.animationDuration = `${duration}s`;
+                petal.style.animationDelay = `${delay}s`;
+
+                petalContainer.appendChild(petal);
+            }
+        }
+
+        function initMarkers() {
+            markersLayer.innerHTML = '';
+            spots.forEach(spot => {
+                const marker = document.createElement('div');
+                marker.className = 'spot-marker';
+                marker.style.left = `${spot.x}px`;
+                marker.style.top = `${spot.y}px`;
+                
+                marker.innerHTML = `
+                    <div class="marker-icon">${spot.icon || '📍'}</div>
+                    <div class="marker-title">${spot.name}</div>
+                `;
+                
+                marker.onclick = (e) => {
+                    e.stopPropagation();
+                    createRipple(spot.x, spot.y);
+                    moveWalkerTo(spot.x, spot.y, `正在前往【${spot.name}】...`);
+                    setTimeout(() => {
+                        openSidebar(spot);
+                    }, 800);
+                };
+                
+                markersLayer.appendChild(marker);
+            });
+        }
+
+        // 🚶‍♀️ 湾小荔走到指定像素坐标
+        function moveWalkerTo(x, y, message) {
+            walkerX = x;
+            walkerY = y;
+            ipWalker.style.left = `${walkerX}px`;
+            ipWalker.style.top = `${walkerY}px`;
+            
+            if (message) {
+                walkerBubble.innerText = message;
+            }
+        }
+
+        // 💧 创建点击波纹效果
+        function createRipple(x, y) {
+            const ripple = document.createElement('div');
+            ripple.className = 'click-ripple';
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            wrapper.appendChild(ripple);
+            
+            setTimeout(() => ripple.remove(), 700);
+        }
+
+        // 🖱️ 点击地图任意区域，湾小荔自由走动
+        function setupClickToWalk() {
+            let dragDistance = 0;
+            let startClickX = 0;
+            let startClickY = 0;
+
+            container.addEventListener('mousedown', (e) => {
+                startClickX = e.clientX;
+                startClickY = e.clientY;
+                dragDistance = 0;
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (e.buttons === 1) {
+                    dragDistance += Math.hypot(e.clientX - startClickX, e.clientY - startClickY);
+                }
+            });
+
+            container.addEventListener('click', (e) => {
+                if (e.target.closest('#sidebar') || e.target.closest('.controls')) return;
+                
+                // 如果滑动距离较长，说明是拖拽地图而不是点击操作
+                if (dragDistance > 8) return;
+
+                const rect = wrapper.getBoundingClientRect();
+                const clickX = (e.clientX - rect.left) / scale;
+                const clickY = (e.clientY - rect.top) / scale;
+
+                createRipple(clickX, clickY);
+
+                const dialogs = ["收到，马上走过去！", "这里的景色真美呀~", "跟着我逛逛湾冲吧！", "好的，走走走！"];
+                const randomText = dialogs[Math.floor(Math.random() * dialogs.length)];
+
+                moveWalkerTo(clickX, clickY, randomText);
+            });
+        }
+
+        // 🔍 地图拖拽与缩放
+        function setupMapControls() {
+            let startX = 0, startY = 0, isDragging = false;
+
+            container.onmousedown = (e) => {
+                if (e.target.closest('.controls') || e.target.closest('#sidebar')) return;
+                startX = e.clientX - pointX;
+                startY = e.clientY - pointY;
+                isDragging = true;
+            };
+
+            window.onmousemove = (e) => {
+                if (!isDragging) return;
+                pointX = e.clientX - startX;
+                pointY = e.clientY - startY;
+                updateTransform();
+            };
+
+            window.onmouseup = () => { isDragging = false; };
+
+            container.onwheel = (e) => {
+                e.preventDefault();
+                const xs = (e.clientX - pointX) / scale;
+                const ys = (e.clientY - pointY) / scale;
+                const delta = -e.deltaY;
+                
+                (delta > 0) ? (scale *= 1.1) : (scale /= 1.1);
+                scale = Math.min(Math.max(0.3, scale), 3);
+
+                pointX = e.clientX - xs * scale;
+                pointY = e.clientY - ys * scale;
+                updateTransform();
+            };
+
+            window.zoomIn = () => { scale = Math.min(scale * 1.2, 3); updateTransform(); };
+            window.zoomOut = () => { scale = Math.max(scale / 1.2, 0.3); updateTransform(); };
+            window.resetZoom = () => { scale = 1; pointX = 0; pointY = 0; updateTransform(); };
+        }
+
+        function updateTransform() {
+            wrapper.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        // 📖 侧边栏及语音
+        function openSidebar(spot) {
+            activeSpotObj = spot;
+            document.getElementById('spot-title').innerText = spot.name;
+            document.getElementById('spot-summary').innerText = spot.summary || "暂无概述";
+            document.getElementById('spot-detail').innerText = spot.detail || "暂无详细介绍";
+
+            stopAudio();
+
+            const mainImg = document.getElementById('main-image');
+            const thumbContainer = document.getElementById('thumb-container');
+            thumbContainer.innerHTML = '';
+
+            if (spot.images && spot.images.length > 0) {
+                mainImg.src = spot.images[0];
+                mainImg.style.display = 'block';
+
+                spot.images.forEach((imgSrc, index) => {
+                    const thumb = document.createElement('img');
+                    thumb.className = `thumb-img ${index === 0 ? 'active' : ''}`;
+                    thumb.src = imgSrc;
+                    thumb.onclick = () => {
+                        mainImg.src = imgSrc;
+                        document.querySelectorAll('.thumb-img').forEach(el => el.classList.remove('active'));
+                        thumb.classList.add('active');
+                    };
+                    thumbContainer.appendChild(thumb);
+                });
+            } else {
+                mainImg.style.display = 'none';
+            }
+
+            document.getElementById('sidebar').classList.add('open');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            stopAudio();
+        }
+
+        function playVoice(lang) {
+            if (!activeSpotObj) return;
+
+            const audioSrc = lang === 'mandarin' ? activeSpotObj.audioMandarin : activeSpotObj.audioCantonese;
+
+            if (!audioSrc) {
+                alert(`该景点暂无${lang === 'mandarin' ? '普通话' : '粤语'}语音解说`);
+                return;
+            }
+
+            const btnMandarin = document.getElementById('btn-mandarin');
+            const btnCantonese = document.getElementById('btn-cantonese');
+
+            if (currentLang === lang && !audio.paused) {
+                audio.pause();
+                resetAudioButtons();
+                currentLang = null;
+                return;
+            }
+
+            audio.src = audioSrc;
+            audio.play().then(() => {
+                currentLang = lang;
+                resetAudioButtons();
+                if (lang === 'mandarin') btnMandarin.classList.add('playing');
+                if (lang === 'cantonese') btnCantonese.classList.add('playing');
+            }).catch(err => {
+                console.error("音频播放失败:", err);
+                alert("音频文件加载失败，请检查文件路径是否存在。");
+                resetAudioButtons();
+            });
+        }
+
+        function stopAudio() {
+            audio.pause();
+            audio.currentTime = 0;
+            currentLang = null;
+            resetAudioButtons();
+        }
+
+        function resetAudioButtons() {
+            document.getElementById('btn-mandarin').classList.remove('playing');
+            document.getElementById('btn-cantonese').classList.remove('playing');
+        }
+    </script>
+</body>
+</html>endY);
+                }
+            });
+        }
+
+        // 🔍 📱 地图拖拽与缩放（同时支持鼠标与手机触摸捏合手势）
+        function setupMapControls() {
+            let startX = 0, startY = 0, isDragging = false;
+            let initialPinchDistance = null;
+            let initialScale = 1;
+
+            // --- 鼠标拖拽 ---
+            container.onmousedown = (e) => {
+                if (e.target.closest('.controls') || e.target.closest('#sidebar') || e.target.closest('#qr-modal')) return;
+                startX = e.clientX - pointX;
+                startY = e.clientY - pointY;
+                isDragging = true;
+            };
+
+            window.onmousemove = (e) => {
+                if (!isDragging) return;
+                pointX = e.clientX - startX;
+                pointY = e.clientY - startY;
+                updateTransform();
+            };
+
+            window.onmouseup = () => { isDragging = false; };
+
+            // --- 触摸拖拽与双指捏合缩放 ---
+            container.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.controls') || e.target.closest('#sidebar') || e.target.closest('#qr-modal')) return;
+                if (e.touches.length === 1) {
+                    startX = e.touches[0].clientX - pointX;
+                    startY = e.touches[0].clientY - pointY;
+                    isDragging = true;
+                } else if (e.touches.length === 2) {
+                    isDragging = false;
+                    initialPinchDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    initialScale = scale;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (e.target.closest('#sidebar') && document.getElementById('sidebar').classList.contains('open')) return;
+                
+                if (e.touches.length === 1 && isDragging) {
+                    pointX = e.touches[0].clientX - startX;
+                    pointY = e.touches[0].clientY - startY;
+                    updateTransform();
+                } else if (e.touches.length === 2 && initialPinchDistance) {
+                    const currentDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    const zoomFactor = currentDistance / initialPinchDistance;
+                    scale = Math.min(Math.max(0.3, initialScale * zoomFactor), 3);
+                    updateTransform();
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', (e) => {
+                if (e.touches.length < 2) initialPinchDistance = null;
+                if (e.touches.length === 0) isDragging = false;
+            });
+
+            // --- 滚轮缩放 ---
+            container.onwheel = (e) => {
+                e.preventDefault();
+                const xs = (e.clientX - pointX) / scale;
+                const ys = (e.clientY - pointY) / scale;
+                const delta = -e.deltaY;
+                
+                (delta > 0) ? (scale *= 1.1) : (scale /= 1.1);
+                scale = Math.min(Math.max(0.3, scale), 3);
+
+                pointX = e.clientX - xs * scale;
+                pointY = e.clientY - ys * scale;
+                updateTransform();
+            };
+
+            window.zoomIn = () => { scale = Math.min(scale * 1.2, 3); updateTransform(); };
+            window.zoomOut = () => { scale = Math.max(scale / 1.2, 0.3); updateTransform(); };
+            window.resetZoom = () => { scale = 1; pointX = 0; pointY = 0; updateTransform(); };
+        }
+
+        function updateTransform() {
+            wrapper.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        // 📖 侧边栏及语音
+        function openSidebar(spot) {
+            activeSpotObj = spot;
+            document.getElementById('spot-title').innerText = spot.name;
+            document.getElementById('spot-summary').innerText = spot.summary || "暂无概述";
+            document.getElementById('spot-detail').innerText = spot.detail || "暂无详细介绍";
+
+            stopAudio();
+
+            const mainImg = document.getElementById('main-image');
+            const thumbContainer = document.getElementById('thumb-container');
+            thumbContainer.innerHTML = '';
+
+            if (spot.images && spot.images.length > 0) {
+                mainImg.src = spot.images[0];
+                mainImg.style.display = 'block';
+
+                spot.images.forEach((imgSrc, index) => {
+                    const thumb = document.createElement('img');
+                    thumb.className = `thumb-img ${index === 0 ? 'active' : ''}`;
+                    thumb.src = imgSrc;
+                    thumb.onclick = () => {
+                        mainImg.src = imgSrc;
+                        document.querySelectorAll('.thumb-img').forEach(el => el.classList.remove('active'));
+                        thumb.classList.add('active');
+                    };
+                    thumbContainer.appendChild(thumb);
+                });
+            } else {
+                mainImg.style.display = 'none';
+            }
+
+            document.getElementById('sidebar').classList.add('open');
+        }
+
+        function closeSidebar() {
+            document.getElementById('sidebar').classList.remove('open');
+            stopAudio();
+        }
+
+        function playVoice(lang) {
+            if (!activeSpotObj) return;
+
+            const audioSrc = lang === 'mandarin' ? activeSpotObj.audioMandarin : activeSpotObj.audioCantonese;
+
+            if (!audioSrc) {
+                alert(`该景点暂无${lang === 'mandarin' ? '普通话' : '粤语'}语音解说`);
+                return;
+            }
+
+            const btnMandarin = document.getElementById('btn-mandarin');
+            const btnCantonese = document.getElementById('btn-cantonese');
+
+            if (currentLang === lang && !audio.paused) {
+                audio.pause();
+                resetAudioButtons();
+                currentLang = null;
+                return;
+            }
+
+            audio.src = audioSrc;
+            audio.play().then(() => {
+                currentLang = lang;
+                resetAudioButtons();
+                if (lang === 'mandarin') btnMandarin.classList.add('playing');
+                if (lang === 'cantonese') btnCantonese.classList.add('playing');
+            }).catch(err => {
+                console.error("音频播放失败:", err);
+                alert("音频文件加载失败，请检查文件路径是否存在。");
+                resetAudioButtons();
+            });
+        }
+
+        function stopAudio() {
+            audio.pause();
+            audio.currentTime = 0;
+            currentLang = null;
+            resetAudioButtons();
+        }
+
+        function resetAudioButtons() {
+            document.getElementById('btn-mandarin').classList.remove('playing');
+            document.getElementById('btn-cantonese').classList.remove('playing');
+        }
+
+        // 📱 动态生成二维码
+        let qrcodeObj = null;
+        function showQRCode() {
+            const modal = document.getElementById('qr-modal');
+            const box = document.getElementById('qrcode-box');
+            box.innerHTML = '';
+            
+            // 获取当前页面网址
+            let currentUrl = window.location.href;
+            
+            // 如果是本地 file:// 打开，给出友情提示
+            if (currentUrl.startsWith('file:')) {
+                box.innerHTML = '<p style="color:#d32f2f; font-size:12px; padding:10px;">⚠️ 当前是以本地文件形式（file://）打开。<br>手机要扫码访问，需将代码部署到服务器或本地局域网（如 GitHub Pages / Live Server）。<br><br><b>生成测试二维码如下：</b></p>';
+                const qrDiv = document.createElement('div');
+                box.appendChild(qrDiv);
+                new QRCode(qrDiv, {
+                    text: "http://192.168.1.100:8080/index.html",
+                    width: 150,
+                    height: 150,
+                    colorDark : "#2e7d32",
+                    colorLight : "#ffffff"
+                });
+            } else {
+                new QRCode(box, {
+                    text: currentUrl,
+                    width: 170,
+                    height: 170,
+                    colorDark : "#2e7d32",
+                    colorLight : "#ffffff"
+                });
+            }
+
+            modal.classList.add('show');
+        }
+
+        function hideQRCode() {
+            document.getElementById('qr-modal').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
